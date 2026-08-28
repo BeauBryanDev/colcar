@@ -1,0 +1,128 @@
+
+[
+  {
+    "brand": "Dacia",
+    "index": 0.75,
+    "models": ["Logan", "Sandero", "Duster", "Stepway", "Dokker"]
+  },
+  {
+    "brand": "Tata",
+    "index": 0.78,
+    "models": ["Indica", "Xenon", "Indigo", "Super Ace", "Safari"]
+  },
+  {
+    "brand": "Suzuki",
+    "index": 0.82,
+    "models": ["Swift", "Vitara", "Jimny", "Grand Vitara", "Alto"]
+  },
+  {
+    "brand": "Renault",
+    "index": 0.85,
+    "models": ["Logan", "Sandero", "Duster", "Kwid", "Stepway"]
+  },
+  {
+    "brand": "Chevrolet",
+    "index": 0.88,
+    "models": ["Spark", "Sail", "Tracker", "Onix", "Captiva"]
+  },
+  {
+    "brand": "Fiat",
+    "index": 0.92,
+    "models": ["Uno", "Palio", "Mobi", "Pulse", "Argo"]
+  },
+  {
+    "brand": "Hyundai",
+    "index": 0.95,
+    "models": ["Tucson", "Accent", "i10", "Elantra", "Santa Fe"]
+  },
+  {
+    "brand": "Kia",
+    "index": 0.98,
+    "models": ["Picanto", "Rio", "Sportage", "Cerato", "Sorento"]
+  },
+  {
+    "brand": "Nissan",
+    "index": 1.05,
+    "models": ["March", "Versa", "Kicks", "Frontier", "Sentra"]
+  },
+  {
+    "brand": "Ford",
+    "index": 1.08,
+    "models": ["Fiesta", "EcoSport", "Escape", "Ranger", "Explorer"]
+  },
+  {
+    "brand": "Peugeot",
+    "index": 1.12,
+    "models": ["208", "2008", "301", "3008", "5008"]
+  },
+  {
+    "brand": "Honda",
+    "index": 1.15,
+    "models": ["Civic", "CR-V", "HR-V", "Fit", "Accord"]
+  },
+  {
+    "brand": "Toyota",
+    "index": 1.2,
+    "models": ["Corolla", "Hilux", "Fortuner", "Prado", "RAV4"]
+  },
+  {
+    "brand": "Mazda",
+    "index": 1.28,
+    "models": ["Mazda 2", "Mazda 3", "CX-5", "CX-30", "BT-50"]
+  },
+  {
+    "brand": "Volkswagen",
+    "index": 1.24,
+    "models": ["Gol", "Jetta", "Tiguan", "Amarok", "Polo"]
+  },
+  {
+    "brand": "Subaru",
+    "index": 1.32,
+    "models": ["Forester", "XV", "Outback", "Impreza", "WRX"]
+  },
+  {
+    "brand": "Volvo",
+    "index": 1.40,
+    "models": ["XC40", "XC60", "XC90", "S60", "V40"]
+  },
+  {
+    "brand": "Lexus",
+    "index": 1.45,
+    "models": ["RX", "NX", "LX", "IS", "GX"]
+  },
+  {
+    "brand": "Audi",
+    "index": 1.55,
+    "models": ["A3", "A4", "Q3", "Q5", "Q7"]
+  },
+  {
+    "brand": "BMW",
+    "index": 1.65,
+    "models": ["Serie 3", "X1", "X3", "X5", "Serie 1"]
+  },
+  {
+    "brand": "Mercedes-Benz",
+    "index": 1.70,
+    "models": ["Clase C", "Clase A", "GLC", "GLE", "Clase E"]
+  },
+  {
+    "brand": "Porsche",
+    "index": 1.80,
+    "models": ["Macan", "Cayenne", "911", "Panamera", "Taycan"]
+  },
+  {
+    "brand": "Maserati",
+    "index": 1.88,
+    "models": ["Levante", "Ghibli", "Quattroporte", "Grecale", "GranTurismo"]
+  },
+  {
+    "brand": "Bentley",
+    "index": 1.95,
+    "models": ["Bentayga", "Continental GT", "Flying Spur", "Mulsanne", "Arnage"]
+  },
+  {
+    "brand": "Rolls-Royce",
+    "index": 2.00,
+    "models": ["Phantom", "Ghost", "Cullinan", "Wraith", "Dawn"]
+  }
+]

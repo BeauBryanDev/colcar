@@ -48,7 +48,7 @@ def get_embedder(settings: Settings | None = None) -> "BGEM3FlagModel":
     """
     Load the bge-m3 encoder once, as the ingest did.
 
-    Notebook: `BGEM3FlagModel("BAAI/bge-m3", use_fp16=True)`. fp16 is settings-
+    Notebook: BGEM3FlagModel("BAAI/bge-m3", use_fp16=True). fp16 is settings-
     driven here because the notebook ran on a Colab GPU while this box VPS has a
     CPU-only torch build, where half precision is slow and sometimes
     unimplemented. It affects numeric precision only, not the vector space.

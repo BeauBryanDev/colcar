@@ -35,7 +35,7 @@ TYRE_PIEZA = "tire"
 #     surface:  parts(seg) + defects(seg) -> NMS -> spatial match -> severity
 #     tyres:    tyres(det)  -> NMS -> pieza fixed as "tire"
 
-# Produces two payloads from one run, because they have different audiences:
+# Produces two payloads from one run, because they have different surfaces.
 
 @dataclass
 class AnalyzedImage:

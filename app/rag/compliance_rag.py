@@ -1,20 +1,7 @@
 """
 Semantic search over the Colombian RTM compliance corpus.
 
-Backs the [[query_compliance]] tool exposed to Claude. Retrieval mirrors the
-search() helper in ml/Compliance_RAG.ipynb: embed the query with bge-m3, then
-query_points against `compliance_normativa`.
-
-Corpus (412 chunks, see CLAUDE.md):
-  resolucion_3768_2013 (binding)  - split per articulo, vigente/derogado
-  ntc_5375, ntc_5385   (binding)   - narrative sections + A/B defect rows
-  concepto_2025...     (NOT binding) - advisory legal opinion
-
-[[binding]] and [[estado]] matter legally: a non-binding concepto or a derogated
-article must never be presented to the customer as a cause of RTM rejection.
-Defaults here exclude both; the agent-facing tool relies on that.
 """
-
 from __future__ import annotations
 
 import logging
@@ -88,6 +75,9 @@ def _build_filter(
     
     return Filter(must=must or None, must_not=must_not or None)
 
+# Backs the [[query_compliance]] tool exposed to Claude. Retrieval mirrors the
+# search() helper in ml/Compliance_RAG.ipynb: embed the query with bge-m3, then
+# query_points against `compliance_normativa`.
 
 def _format_hit(point: Any) -> dict[str, Any]:
     """Flatten a scored point into the shape handed back to Claude."""
@@ -111,6 +101,9 @@ def _format_hit(point: Any) -> dict[str, Any]:
         "texto": text[:_MAX_TEXT_CHARS] + ("..." if truncated else ""),
     }
 
+#   resolucion_3768_2013 (binding)  - split per articulo, vigente/derogado
+#   ntc_5375, ntc_5385   (binding)   - narrative sections + A/B defect rows
+#   concepto_2025...     (NOT binding) - advisory legal opinion
 
 def query_compliance(
     pieza: str,

@@ -1,0 +1,37 @@
+# Auto-Repair-Services backend
+# Target: conda base env, Python 3.13
+#
+# Most of these are already present in the conda base env. Only qdrant-client
+# and FlagEmbedding were missing at first setup:
+#     pip install qdrant-client FlagEmbedding
+
+# ── API ──────────────────────────────────────────────────────────────────────
+fastapi>=0.135
+uvicorn[standard]>=0.30
+python-multipart>=0.0.9        # multipart form parsing for /inspections/upload
+pydantic>=2.12
+pydantic-settings>=2.12
+
+# ── Agent ────────────────────────────────────────────────────────────────────
+anthropic>=0.121              # Claude Haiku 4.5 tool-use loop
+
+# ── Compliance RAG ───────────────────────────────────────────────────────────
+qdrant-client>=1.12           # collection: compliance_normativa (1024-dim cosine)
+FlagEmbedding>=1.3            # BGEM3FlagModel - the exact library the ingest
+                              # used, so runtime queries take an identical code
+                              # path. MUST stay bge-m3: the 387 stored vectors
+                              # are in its space and nothing else reproduces
+                              # them. ~4 GB of weights on first run.
+                              # Not FastEmbed / Qdrant Cloud Inference: neither
+                              # serves bge-m3.
+torch>=2.0                    # sentence-transformers backend (CPU build is fine)
+transformers>=4.40
+
+# ── Vision ───────────────────────────────────────────────────────────────────
+onnxruntime>=1.18             # runs the three YOLOv8 .onnx models
+numpy>=1.26
+opencv-python>=4.9            # contour extraction / preprocessing
+pillow>=10.0
+
+# ── Ingest only (ml/Compliance_RAG.ipynb, not needed to serve the API) ───────
+# pymupdf>=1.24               # PDF word-bbox extraction for the A/B defect tables

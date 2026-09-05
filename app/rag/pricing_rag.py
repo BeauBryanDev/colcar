@@ -1,22 +1,3 @@
-"""
-In-memory PricingTrie over AUTOPAIRS_CATALOG_PRICES.json.
-
-Backs the [[query_pricing_batch]] tool. Unlike the compliance side this is exact
-lookup, not semantic search: [[pieza -> tipo_defecto -> severidad]] is a dict
-walk, so the English class names the vision models emit are the correct keys and
-must not be translated.
-
-Lookups degrade instead of failing, reporting how far they had to fall back:
-
-    exact  -> the precise pieza/defecto/severidad node
-    part+defect_generic  -> same pieza and defecto, nearest severidad
-    part_generic   -> the `generic:<category>` node for that pieza
-    not_found    -> nothing priced; the agent must not invent a figure
-
-The distinction matters downstream: a quote built from  part_generic  is a
-category estimate, not a price for that specific part, and should be presented
-that way.
-"""
 
 from __future__ import annotations
 

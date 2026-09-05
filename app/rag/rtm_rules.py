@@ -1,12 +1,4 @@
-"""
-When a defect fails the RTM outright.
 
-Retrieval alone cannot answer "does this car pass?". `compliance_rag` returns
-the *clauses* that match a defect; turning those into a verdict is a policy
-decision, and it belongs in one place so the agent, the SPA and any future
-report writer cannot disagree about it.
-
-"""
 
 from __future__ import annotations
 

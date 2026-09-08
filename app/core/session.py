@@ -1,5 +1,3 @@
-"""In-memory inspection session store.
-"""
 
 from __future__ import annotations
 
@@ -16,9 +14,11 @@ from app.core.config import get_settings
 from app.core.exceptions import SessionNotFoundError, SessionStateError
 
 logger = logging.getLogger(__name__)
+# In-memory inspection session store.
 
 # Mirrors DetectionModel in src/types/inspection.ts -- the three upload panels.
 DetectionModel = Literal["vehicle_parts", "surface_defects", "tires_wheels"]
+
 DETECTION_MODELS: tuple[DetectionModel, ...] = (
     "vehicle_parts", "surface_defects", "tires_wheels",
                 )
@@ -109,8 +109,8 @@ class InspectionSession:
     steps: list[ProcessingStep] = field(default_factory=list)
 
     # Filled by the vision pipeline, then consumed by the agent.
-    vision_result: dict[str, Any] | None = None   # full payload, for the SPA
-    agent_payload: dict[str, Any] | None = None   # compact JSON seeded to Claude
+    vision_result: dict[str, Any] | None = None  # full payload, for the SPA
+    agent_payload: dict[str, Any] | None = None  # compact JSON seeded to Claude
 
     # Tool-use conversation, kept so /chat continues the same thread.
     messages: list[dict[str, Any]] = field(default_factory=list)
@@ -153,8 +153,27 @@ class InspectionSession:
             **({"error": self.error} if self.error else {}),
         }
 
+    def agent_context(self) -> dict[str, Any]:
+        """Server-side facts the tools need but the model must never supply.
+
+        Vehicle info (brand -> price index), the inspection id (what an
+        appointment books against) and the quote as computed, so
+        `make_appointment` never takes a total or an id from a tool argument.
+        """
+        report = self.report or {}
+        resumen = ((report.get("pricing") or {}).get("resumen")) or {}
+        return {
+            **self.vehicle_info,
+            "inspection_id": self.id,
+            "inspection_status": self.status,
+            "total_cop": resumen.get("total_cop"),
+            "rechazo_rtm_probable": (report.get("compliance") or {}).get(
+                "rechazo_rtm_probable"
+            ),
+        }
+
     def to_summary(self) -> dict[str, Any]:
-        
+
         return {
             "sessionId": self.id,
             "status": self.status,

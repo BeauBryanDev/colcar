@@ -6,7 +6,7 @@ from typing import Literal
 from pydantic import Field, SecretStr, computed_field, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
-# app/core/config.py -> app/core -> app -> repo root
+# app/core/config.py -> app/core -> app -> my repo root
 BASE_DIR = Path(__file__).resolve().parents[2]
 
 
@@ -20,7 +20,7 @@ class Settings(BaseSettings):
     )
 
     # APP SETTINGS
-    app_name: str = "Beau Auto-Repairs Inspector"
+    app_name: str = "Beau-Auto-Repairs-Inspector"
     agent_name : str = "ColCar"
     environment: Literal["dev", "staging", "prod"] = "dev"
     debug: bool = True
@@ -45,27 +45,54 @@ class Settings(BaseSettings):
         "http://localhost:8015",
         "http://127.0.0.1:5173",
         "http://127.0.0.1:8015",
-    ]
+    ] # to be changed with the subdoamin
 
     #  Anthropic  
     anthropic_api_key: SecretStr
     # Claude drives the tool-use loop only; the ONNX models do the perception,
     # so it never receives an image and Haiku is sufficient cheap and fast .
     anthropic_model: str = "claude-haiku-4-5"
-    anthropic_max_tokens: int = 4096
+    anthropic_max_tokens: int = 2048
     # Guards the agent loop against a tool-calling cycle that never terminates.
     anthropic_max_tool_iterations: int = 8
 
-    # How many recent messages the agent keeps in context. The seeded
-    # inspection payload is always pinned on top of this, so the agent never
-    # forgets which vehicle it is discussing.
+    # How many recent messages the agent keeps in context.
     agent_memory_messages: int = 5
 
     # Keep the query_pricing_batch tool_use/tool_result pair in context for the
     # whole conversation, on top of the window.
     agent_pin_pricing: bool = True
 
-    #  Qdrant / compliance RAG 
+    #  API Ninjas / engine specifications 
+    # Optional: without a key the query_car_specs tool reports itself as
+    # unavailable and everything else keeps working. Read from API_NINJA_KEY.
+    api_ninja_key: SecretStr | None = None
+    api_ninja_cars_url: str = "https://api.api-ninjas.com/v1/cars"
+    api_ninja_timeout: int = 10
+
+    #  MongoDB Atlas
+    # Source of truth for the pricing catalog and the brand index (v2). Optional:
+    # when unset -- or unreachable -- both loaders fall back to the local JSON files
+    # and log an error, so tests, CI and a Mongo outage still quote. The URI
+    # carries the password; it is in the log redaction filter.
+    mongodb_uri: SecretStr | None = None
+    mongodb_db: str = "car_scanner"
+    mongodb_timeout_ms: int = 5000
+    pricing_collection: str = "pricing_catalog"
+    brands_collection: str = "car_brands"
+    catalog_meta_collection: str = "catalog_meta"
+    inspections_collection: str = "inspections"
+    appointments_collection: str = "appointments"
+
+    #  Workshop scheduling (make_appointment tool)
+    # Slots are validated in the workshop's local time, then stored in UTC.
+    workshop_timezone: str = "America/Bogota"
+    workshop_open_hour: int = 8  # first bookable slot, inclusive
+    workshop_close_hour: int = 18  # last bookable slot starts before this
+    workshop_days: list[int] = [0, 1, 2, 3, 4, 5]  # Mon..Sat (datetime.weekday)
+    appointment_code_length: int = 6
+
+    #  Qdrant / compliance RAG
     qdrant_url: str
     qdrant_api_key: SecretStr
     qdrant_collection: str = "compliance_normativa"
@@ -153,6 +180,15 @@ class Settings(BaseSettings):
     @classmethod
     def _strip_trailing_slash(cls, v: str) -> str:
         return v.rstrip("/")
+
+    @field_validator("mongodb_uri", "api_ninja_key", mode="before")
+    @classmethod
+    def _empty_secret_is_unset(cls, v: object) -> object:
+        # `MONGODB_URI=` left blank in .env (or set to "" by the test suite to
+        # force the JSON fallback) means "not configured", not an empty key.
+        if isinstance(v, str) and not v.strip():
+            return None
+        return v
 
     @computed_field  # type: ignore[prop-decorator]
     @property

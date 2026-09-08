@@ -72,16 +72,47 @@ class RedactingFilter(logging.Filter):
 
 def _secret_values(settings: Settings) -> list[str]:
     """Every secret the app knows about, unwrapped for substring matching."""
-    return [
+    values = [
         settings.anthropic_api_key.get_secret_value(),
         settings.qdrant_api_key.get_secret_value(),
     ]
+    if settings.api_ninja_key is not None:
+        values.append(settings.api_ninja_key.get_secret_value())
+        
+    if settings.mongodb_uri is not None:
+        # The whole URI, and the password on its own: pymongo error messages
+        # quote the host, not the URI, but a traceback may carry either.
+        uri = settings.mongodb_uri.get_secret_value()
+        values.append(uri)
+        password = _password_of(uri)
+        
+        if password:
+            values.append(password)
+            
+    return values
 
 
-def setup_logging(settings: Settings | None = None, *, force: bool = False) -> None:
+def _password_of(uri: str) -> str | None:
+    """Password segment of a `scheme://user:pass@host` URI, if any."""
+    from urllib.parse import unquote, urlsplit
+
+    try:
+        pw = urlsplit(uri).password
+        
+    except ValueError:
+        return None
+    
+    return unquote(pw) if pw else None
+
+
+def setup_logging(settings: Settings | None = None,
+                  *, 
+                  force: bool = False
+                  ) -> None:
     """Configure root logging. Idempotent unless `force=True`."""
     global _configured
     if _configured and not force:
+        
         return
 
     s = settings or get_settings()
@@ -108,6 +139,7 @@ def setup_logging(settings: Settings | None = None, *, force: bool = False) -> N
         lg.propagate = True
 
     _configured = True
+    
     logging.getLogger(__name__).info(
         "Logging ready: level=%s environment=%s", s.log_level.upper(), s.environment
     )

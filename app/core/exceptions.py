@@ -118,6 +118,37 @@ class PricingCatalogError(AppError):
 
 
 #   Agent  
+class CarSpecsUnavailableError(AppError):
+    """API Ninjas could not be queried (no key, network, non-2xx).
+
+    Raised as an AppError so the agent loop degrades: the diagnosis and the
+    quote do not depend on engine data.
+    """
+
+    code = "car_specs_unavailable"
+    detail = "No se pudo consultar la ficha tecnica del motor en este momento."
+
+
+class AppointmentUnavailableError(AppError):
+    """The appointments store (MongoDB) could not be written or read.
+
+    An AppError so the agent loop degrades: the diagnosis and the quote stay
+    intact and Claude tells the customer to call the workshop instead.
+    """
+
+    code = "appointment_unavailable"
+    detail = (
+        "No se pudo registrar la cita en este momento. Comunicate "
+        "directamente con Beau Auto-Repairs para agendarla."
+    )
+
+
+class AppointmentNotFoundError(AppError):
+    code = "appointment_not_found"
+    status_code = status.HTTP_404_NOT_FOUND
+    detail = "La cita no existe."
+
+
 class AgentError(AppError):
     status_code = status.HTTP_502_BAD_GATEWAY
     code = "agente_no_disponible"
@@ -150,14 +181,16 @@ async def app_error_handler(request: Request,
         exc.log_message,
     )
     
-    return JSONResponse(status_code=exc.status_code, content=exc.to_payload())
+    return JSONResponse(status_code=exc.status_code, 
+                        content=exc.to_payload())
 
 
 async def validation_error_handler(
                 request: Request, 
                 exc: RequestValidationError
             ) -> JSONResponse:
-    """FastAPI's 422 body is a list of dicts; the frontend expects a string."""
+    """FastAPI's 422 body is a list of dicts; 
+    the frontend expects a string."""
     logger.warning(
         "%s %s -> 422 validation: %s",
         request.method, 
@@ -177,7 +210,8 @@ async def validation_error_handler(
     )
 
 
-async def unhandled_error_handler(request: Request, exc: Exception) -> JSONResponse:
+async def unhandled_error_handler(request: Request, 
+                                  exc: Exception) -> JSONResponse:
     """Last resort. Never leaks the exception text to the client."""
     logger.exception("%s %s -> unhandled %s", 
                      request.method, 

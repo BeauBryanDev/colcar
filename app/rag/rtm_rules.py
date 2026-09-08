@@ -1,5 +1,4 @@
 
-
 from __future__ import annotations
 
 import logging
@@ -39,7 +38,7 @@ _NO_REJECTION_NOTE = (
 def _binding(norma: dict[str, Any]) -> bool:
     """Advisory sources never justify a rejection."""
     # The RAG emits `vinculante`; the raw chunk payload uses `binding`.
-    value = norma.get("vinculante")
+    value = norma.get("vinculante") # it is weird because the corupus was all in Spanish
     
     if value is None:
         

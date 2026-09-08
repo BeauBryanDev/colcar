@@ -320,6 +320,7 @@ def build_query_text(pieza: str,
     
     if severidad:
         
-        parts.append(SEVERIDAD_ES.get(severidad.lower(), severidad))
+        parts.append(SEVERIDAD_ES.get(severidad.lower(), 
+                                      severidad))
         
     return " ".join(p for p in parts if p)

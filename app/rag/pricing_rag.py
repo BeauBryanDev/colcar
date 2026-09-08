@@ -6,9 +6,10 @@ import logging
 from dataclasses import dataclass
 from functools import lru_cache
 from pathlib import Path
-from typing import Literal
+from typing import Iterable, Literal
 
 from app.core.config import get_settings
+from app.db import mongo
 # PIEZA_CATEGORY lives in vocabulary.py: spatial matching needs the same
 # part->category map for defect affinity.
 from app.rag.brand_index import apply_index, brand_index, get_brand
@@ -17,6 +18,7 @@ from app.rag.vocabulary import PIEZA_CATEGORY, canonical_defect
 logger = logging.getLogger(__name__)
 
 FallbackLevel = Literal["exact", "part+defect_generic", "part_generic", "not_found"]
+CatalogSource = Literal["mongo", "json", "memory"]
 
 # leve < moderado < grave. Ordered so the nearest severity can be found when a
 # pieza/defecto pair exists but not at the requested grade.
@@ -44,6 +46,7 @@ class PricingEntry:
 
     @classmethod
     def from_json(cls, raw: dict) -> "PricingEntry":
+        # raw is the JSON payload from the pricing catalog.
         return cls(
             service_name=raw["service_name"],
             labor_hours=float(raw.get("labor_hours") or 0),
@@ -109,6 +112,10 @@ class PricingTrie:
 
     def __init__(self) -> None:
         self._root: dict[str, dict[str, dict[str, PricingEntry]]] = {}
+        # Where the entries came from: "mongo", "json", or "memory" for a
+        # hand-built trie. Reported by /health/ready and the startup log so a
+        # silent fallback to the file is visible to an operator.
+        self.source: CatalogSource = "memory"
 
  # build 
     def insert(
@@ -260,26 +267,103 @@ class PricingTrie:
         return sorted(self._root)
 
 
-def build_trie(catalog_path: Path | None = None) -> PricingTrie:
-    """Load the catalog JSON into a trie."""
-    path = catalog_path or get_settings().pricing_catalog_path
+#  catalog sources
+#
+# The trie is always built in memory from a flat list of entry dicts; only
+# where that list comes from changed in v2. Mongo is the source of truth, the
+# JSON file is the seed and the fallback. Both yield the same dict shape, so
+# PricingEntry.from_json serves both and the seed script is a straight copy.
+# TODO: Add Amin panel to edit catalog prices in the workshop, 
+# TODO: which will write to Mongo and invalidate the cached trie.
+
+def _entries_from_file(path: Path | None = None) -> list[dict]:
+    # The seed script is a straight copy of the JSON file.
+    path = path or get_settings().pricing_catalog_path
     
     with open(path, encoding="utf-8") as f:
-        catalog = json.load(f)
+        return list(json.load(f)["entries"])
 
+
+def _entries_from_mongo() -> list[dict]:
+    """Every catalog document. Raises PyMongoError when unreachable."""
+    s = get_settings()
+    coll = mongo.get_db(s)[s.pricing_collection]
+    
+    return list(coll.find({}, {"_id": False}))
+
+
+def _trie_from_entries(
+    entries: Iterable[dict], 
+    *, 
+    source: CatalogSource = "memory"
+) -> PricingTrie:
+    # The trie is always built in memory from a flat list of entry dicts    
     trie = PricingTrie()
     
-    for raw in catalog["entries"]:
+    for raw in entries:
         
         trie.insert(
-            raw["pieza"], raw["tipo_defecto"], 
+            raw["pieza"], 
+            raw["tipo_defecto"], 
             raw["severidad"],
             PricingEntry.from_json(raw),
         )
+    trie.source = source
+    
+    return trie
+
+
+def build_trie(
+    catalog_path: Path | None = None,
+    *,
+    source: Literal["auto", "mongo", "json"] = "auto",
+) -> PricingTrie:
+    """
+    Build the trie from Mongo when configured, else from the JSON file.
+
+    `auto` degrades rather than fails: an unreachable cluster or an EMPTY
+    collection (a seed that never ran must not quote nothing) logs an error
+    and loads the file. `catalog_path` forces the file, which is what the
+    tests and the seed script's parity check use.
+    """
+    if catalog_path is not None:
+        source = "json"
+
+    if source in ("auto", "mongo") and mongo.is_configured():
+        try:
+            entries = _entries_from_mongo()
+            
+            if not entries:
+                
+                raise ValueError("collection is empty -- run scripts/seed_catalog.py")
+            
+            trie = _trie_from_entries(entries, source="mongo")
+            
+            logger.info(
+                "PricingTrie loaded from MongoDB: %d entries, %d piezas.",
+                len(trie), len(trie.piezas),
+            )
+            return trie
         
-    logger.info("PricingTrie loaded: %d entries, %d piezas.", 
-                len(trie), 
-                len(trie.piezas))
+        except Exception as exc:  # noqa: BLE001 - network or data, degrade either way
+            
+            if source == "mongo":
+                raise
+            
+            logger.error(
+                "Pricing catalog: MongoDB unavailable (%s); falling back to JSON",
+                exc,
+            )
+            
+    elif source == "mongo":
+        raise RuntimeError("MONGODB_URI is not set")
+
+    trie = _trie_from_entries(_entries_from_file(catalog_path), source="json")
+    logger.info(
+        "PricingTrie loaded from JSON: %d entries, %d piezas.",
+        len(trie),
+        len(trie.piezas),
+    )
     
     return trie
 
@@ -414,7 +498,7 @@ def query_pricing_batch(
             "moneda": "COP",
             "marca": brand_info.name if brand_info else (brand or None),
             "indice_marca": index,
-        },
+        }, # It is an Spanish SPA/COL so the agent can quote it.
         "instrucciones": (
             "total_cop ya esta calculado: usalo tal cual, no vuelvas a sumar. "
             "Los precios YA incluyen el ajuste por marca del vehiculo "

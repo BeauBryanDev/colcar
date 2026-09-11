@@ -44,7 +44,8 @@ def ensure_indexes() -> None:
     # Idempotency key: the agent loop can retry, and a double booking is
     # visible to a real customer.
     appts.create_index(
-        [("inspection_id", ASCENDING), ("scheduled_for", ASCENDING)],
+        [("inspection_id", ASCENDING), 
+         ("scheduled_for", ASCENDING)],
         unique=True,
         name="uniq_inspection_slot",
     )

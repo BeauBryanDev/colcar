@@ -15,7 +15,9 @@ logger = logging.getLogger(__name__)
 # MongoDB Atlas connection string format:
  
 def is_configured(settings: Settings | None = None) -> bool:
+    
     s = settings or get_settings()
+    
     return s.mongodb_uri is not None
 
 

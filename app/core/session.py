@@ -16,7 +16,6 @@ from app.core.exceptions import SessionNotFoundError, SessionStateError
 logger = logging.getLogger(__name__)
 # In-memory inspection session store.
 
-# Mirrors DetectionModel in src/types/inspection.ts -- the three upload panels.
 DetectionModel = Literal["vehicle_parts", "surface_defects", "tires_wheels"]
 
 DETECTION_MODELS: tuple[DetectionModel, ...] = (
@@ -162,6 +161,7 @@ class InspectionSession:
         """
         report = self.report or {}
         resumen = ((report.get("pricing") or {}).get("resumen")) or {}
+        
         return {
             **self.vehicle_info,
             "inspection_id": self.id,
@@ -401,11 +401,13 @@ class SessionStore:
 
     # introspection
     def __len__(self) -> int:
+        
         with self._lock:
             return len(self._sessions)
 
     @property
     def active_ids(self) -> list[str]:
+        
         with self._lock:
             return list(self._sessions)
 

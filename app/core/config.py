@@ -33,8 +33,7 @@ class Settings(BaseSettings):
     api_port: int = 8015
 
     # Load models and the embedder during startup rather than on the first
-    # request. Costs ~8 s of boot; the alternative is a customer waiting for it,
-    # and a cold HF cache check once stalled a request for 8 minutes.
+    # request.
     warmup_on_startup: bool = True
 
     # Vite dev (5173) and vite preview (4173) proxy /api to the backend, so the
@@ -45,7 +44,7 @@ class Settings(BaseSettings):
         "http://localhost:8015",
         "http://127.0.0.1:5173",
         "http://127.0.0.1:8015",
-    ] # to be changed with the subdoamin
+    ] # to be changed with the real subdoamin
 
     #  Anthropic  
     anthropic_api_key: SecretStr
@@ -83,6 +82,37 @@ class Settings(BaseSettings):
     catalog_meta_collection: str = "catalog_meta"
     inspections_collection: str = "inspections"
     appointments_collection: str = "appointments"
+    users_collection: str = "users"
+    discounts_collection: str = "discounts"
+    # Sequence counters (ticket numbers). One document per counter.
+    counters_collection: str = "counters"
+
+    #  Admin accounts seed in ./scripts/seed_admin.py
+    # Credentials for the seeded accounts, read from .env and never hardcoded.
+    # Only the hash is stored; the clear-text values are in the log redaction
+    # filter with every other secret. 
+    admin_username: str | None = None
+    admin_password: SecretStr | None = None
+    admin_full_name: str | None = None
+    admin_email: str | None = None
+    admin_phone_number: str | None = None
+    staff_username: str | None = None
+    staff_password: SecretStr | None = None
+    # argon2id parameters. Defaults are argon2-cffi's own; pinned here so a
+    # library bump cannot silently change the cost of every stored hash.
+    argon2_time_cost: int = 3
+    argon2_memory_cost: int = 65536  # KiB
+    argon2_parallelism: int = 4
+
+    #  JWT (POST /api/auth/login)
+    # HS256 with a shared secret: one process signs and verifies, so an
+    # asymmetric key would buy nothing. 
+    jwt_secret: SecretStr | None = None
+    jwt_algorithm: str = "HS256"
+    # Short by design: the dashboard is a back-office tool and there is no
+    # refresh token yet, so a stolen token expires within the hour.
+    jwt_access_token_minutes: int = 60
+    jwt_issuer: str = "car-scanner"
 
     #  Workshop scheduling (make_appointment tool)
     # Slots are validated in the workshop's local time, then stored in UTC.
@@ -113,10 +143,7 @@ class Settings(BaseSettings):
     # Once the weights are cached, skip HuggingFace's network validation.
     embedding_offline: bool = True
 
-    # Fixed project decision, not a tuning knob. k=3 is load-bearing: for
-    # back_glass the correct clause lands at rank 2 behind an unrelated tyre
-    # row, so k=2 would drop it. Raising k feeds the agent more low-relevance
-    # text, which is what the scope gate exists to prevent.
+    # Fixed project decision
     compliance_top_k: int = 3
 
     #  Pricing 
@@ -181,7 +208,14 @@ class Settings(BaseSettings):
     def _strip_trailing_slash(cls, v: str) -> str:
         return v.rstrip("/")
 
-    @field_validator("mongodb_uri", "api_ninja_key", mode="before")
+    @field_validator(
+        "mongodb_uri",
+        "api_ninja_key",
+        "admin_password",
+        "staff_password",
+        "jwt_secret",
+        mode="before",
+    )
     @classmethod
     def _empty_secret_is_unset(cls, v: object) -> object:
         # `MONGODB_URI=` left blank in .env (or set to "" by the test suite to

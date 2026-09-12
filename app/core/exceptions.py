@@ -149,6 +149,50 @@ class AppointmentNotFoundError(AppError):
     detail = "La cita no existe."
 
 
+#  Admin authentication
+class AuthenticationError(AppError):
+    """Bad credentials, or a missing/expired/forged token.
+
+    **One detail string for every cause.** A wrong password, an unknown
+    username and a disabled account must be indistinguishable to the caller,
+    or the endpoint becomes a user-enumeration oracle. `log_message` carries
+    which it actually was, for us.
+    """
+
+    status_code = status.HTTP_401_UNAUTHORIZED
+    code = "credenciales_invalidas"
+    detail = "Usuario o contrasena incorrectos."
+
+
+class TokenExpiredError(AuthenticationError):
+    """Separate code so the SPA can redirect to the login page rather than
+    showing a wrong-password message. Still a 401."""
+
+    code = "token_expirado"
+    detail = "La sesion expiro. Inicia sesion de nuevo."
+
+
+class AuthorizationError(AppError):
+    """Authenticated, but the role is not enough. 403, never 401 -- logging in
+    again would not help."""
+
+    status_code = status.HTTP_403_FORBIDDEN
+    code = "permiso_denegado"
+    detail = "No tienes permisos para esta operacion."
+
+
+class AuthUnavailableError(AppError):
+    """No `JWT_SECRET`, or the users store is unreachable.
+
+    Deliberately does NOT degrade the way the agent tools do: an auth layer
+    that fails open is worse than one that fails closed.
+    """
+
+    status_code = status.HTTP_503_SERVICE_UNAVAILABLE
+    code = "autenticacion_no_disponible"
+    detail = "El servicio de autenticacion no esta disponible."
+
+
 class AgentError(AppError):
     status_code = status.HTTP_502_BAD_GATEWAY
     code = "agente_no_disponible"

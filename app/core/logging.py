@@ -1,5 +1,3 @@
-"""Logging setup for the backend.
-"""
 
 from __future__ import annotations
 
@@ -8,6 +6,7 @@ import logging.config
 import sys
 from typing import Any
 
+# Logging setup for the backend.
 from app.core.config import Settings, get_settings
 
 # Loggers that are noisy at INFO and rarely tell us anything we want.
@@ -88,7 +87,17 @@ def _secret_values(settings: Settings) -> list[str]:
         
         if password:
             values.append(password)
-            
+
+    # Seed credentials: the clear text exists only between .env and the
+    # hasher, but a traceback in scripts/seed_admin.py could quote it.
+    for secret in (settings.admin_password, settings.staff_password):
+        if secret is not None:
+            values.append(secret.get_secret_value())
+
+    # The JWT signing key: anyone holding it can mint an admin token.
+    if settings.jwt_secret is not None:
+        values.append(settings.jwt_secret.get_secret_value())
+
     return values
 
 

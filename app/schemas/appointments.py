@@ -28,6 +28,13 @@ class CarInfoResponse(ApiResponse):
     specs: dict[str, Any] | None = None
 
 
+class DiscountResponse(ApiResponse):
+    code: str
+    percent: int
+    original_cost_cop: int
+    ticket_number: str | None = None
+
+
 class AppointmentResponse(ApiResponse):
     appointment_id: str
     codigo: str
@@ -39,6 +46,7 @@ class AppointmentResponse(ApiResponse):
     scheduled_local: str
     timezone: str
     estimated_repair_cost_cop: int | None = None
+    discount: DiscountResponse | None = None
     inspection_snapshot: dict[str, Any] = Field(default_factory=dict)
     notes: str | None = None
     created_at: str
@@ -57,6 +65,16 @@ class AppointmentResponse(ApiResponse):
             scheduled_local=doc.scheduled_local,
             timezone=doc.timezone,
             estimated_repair_cost_cop=doc.estimated_repair_cost_cop,
+            discount=(
+                DiscountResponse(
+                    code=doc.discount.code,
+                    percent=doc.discount.percent,
+                    original_cost_cop=doc.discount.original_cost_cop,
+                    ticket_number=doc.discount.ticket_number,
+                )
+                if doc.discount
+                else None
+            ),
             inspection_snapshot=_jsonable(doc.inspection_snapshot),
             notes=doc.notes,
             created_at=doc.created_at.isoformat(),

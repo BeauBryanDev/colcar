@@ -11,7 +11,12 @@ from pymongo.errors import DuplicateKeyError, PyMongoError
 
 from app.core.config import get_settings
 from app.db.mongo import get_db
-from app.models.appointment import AppointmentDocument, code_of, new_appointment_id
+from app.models.appointment import (
+    AppointmentDocument,
+    Discount,
+    code_of,
+    new_appointment_id,
+)
 from app.models.inspection import InspectionDocument
 from app.models.user import UserDocument, normalize_username
 
@@ -32,6 +37,13 @@ def _appointments():
     s = get_settings()
     return get_db(s)[s.appointments_collection]
 
+def _discounts():
+    from app.core.config import get_settings
+    from app.db.mongo import get_db
+ 
+    s = get_settings()
+    return get_db(s)[s.discounts_collection]
+ 
 
 def ensure_indexes() -> None:
     """Idempotent. Called from warmup so a fresh cluster is ready to book."""
@@ -47,8 +59,38 @@ def ensure_indexes() -> None:
         partialFilterExpression={"status": {"$in": ["programada", "confirmada"]}},
         name="uniq_inspection_slot",
     )
+    # One vehicle at a time: no two ACTIVE appointments share a slot, whatever
+    # inspection they belong to. THIS is the double-booking guard --
+    # check_availability is only the friendly pre-check, and two callers can
+    # both read "free" before either writes.
+    appts.create_index(
+        [("scheduled_for", ASCENDING)],
+        unique=True,
+        partialFilterExpression={"status": {"$in": ["programada", "confirmada"]}},
+        name="uniq_active_slot",
+    )
     _inspections().create_index([("created_at", ASCENDING)], name="by_created")
 
+
+def _counters():
+    s = get_settings()
+    return get_db(s)[s.counters_collection]
+
+
+#  discounts
+def ensure_discount_indexes() -> None:
+    """Idempotent. Call from warmup alongside ensure_indexes().
+ 
+    A discount is granted at most once per customer. The unique index on the
+    customer key is the real gate: even if the tool logic is bypassed, Mongo
+    refuses a second grant for the same email/plate.
+    """
+    d = _discounts()
+    d.create_index([("discount_id", ASCENDING)], unique=True, name="uniq_discount_id")
+    d.create_index([("customer_key", ASCENDING)], unique=True, name="uniq_customer_key")
+    d.create_index([("created_at", ASCENDING)], name="by_created")
+    d.create_index([("ticket_number", ASCENDING)], unique=True, sparse=True,
+                   name="uniq_ticket_number")
 
 #  inspections
 
@@ -63,6 +105,21 @@ def get_inspection(inspection_id: str) -> InspectionDocument | None:
     
     return InspectionDocument.from_doc(raw) if raw else None
 
+
+def slot_is_available(scheduled_for: datetime) -> bool:
+    """True when no ACTIVE appointment occupies this exact UTC slot.
+ 
+    'Active' = programada or confirmada. Cancelled appointments do not block.
+    """
+    hit = _appointments().find_one(
+        {
+            "scheduled_for": scheduled_for,
+            "status": {"$in": ["programada", "confirmada"]},
+        },
+        projection={"_id": 1},
+    )
+    return hit is None
+ 
 
 #  appointments
 
@@ -334,6 +391,7 @@ def count_appointments(
     if codigo:
         query["codigo"] = codigo.strip().upper()
         
+        
     return _appointments().count_documents(query)
 
 
@@ -364,6 +422,95 @@ def set_appointment_status(
     )
     return AppointmentDocument.from_doc(raw) if raw else None
 
+
+def find_appointment_by_email_or_plate(
+    email: str | None, plate: str | None,
+    exclude_inspection_id: str | None = None,
+) -> bool:
+    """True when a prior appointment exists for this email OR plate.
+ 
+    Both are stored on the appointment: customer.email and
+    car_info.license_plate. Plate must be passed already normalised (ABC123),
+    the same form make_appointment stores.
+    """
+    conditions: list[dict[str, Any]] = []
+    
+    if email:
+        conditions.append({"customer.email": email})
+        
+    if plate:
+        conditions.append({"car_info.license_plate": plate})
+        
+    if not conditions:
+        return False
+
+    query: dict[str, Any] = {"$or": conditions}
+    # The booking made from THIS inspection does not make its own customer a
+    # returning one: otherwise bargaining after booking is impossible.
+    if exclude_inspection_id:
+        query["inspection_id"] = {"$ne": exclude_inspection_id}
+
+    hit = _appointments().find_one(query, projection={"_id": 1})
+
+    return hit is not None
+
+
+
+def verify_appointment_owner(
+    codigo: str, 
+    email: str, 
+    plate: str
+) -> AppointmentDocument | None:
+    """Return the appointment only if BOTH email and plate match its stored
+    customer and vehicle. None on any mismatch, including a valid code that
+    belongs to someone else.
+ 
+    """
+    doc = get_appointment(codigo)
+    
+    if doc is None:
+        return None
+    
+    if doc.customer.email.strip().lower() != email.strip().lower():
+        return None
+    
+    if doc.car_info.license_plate != plate:
+        return None
+    
+    return doc
+
+
+def reschedule_appointment(
+    codigo_or_id: str, 
+    new_scheduled_for: datetime, 
+    new_scheduled_local: str
+) -> AppointmentDocument | None:
+    """Move an ACTIVE appointment to a new slot. None if there is no such
+    appointment, or it is not programada/confirmada (already cancelled or
+    attended appointments cannot be moved).
+    """
+    key = codigo_or_id.strip()
+    
+    raw = _appointments().find_one_and_update(
+        {
+            "$or": [{"_id": key}, {"codigo": key.upper()}],
+            "status": {"$in": ["programada", "confirmada"]},
+        },
+        {
+            "$set": {
+                "scheduled_for": new_scheduled_for,
+                "scheduled_local": new_scheduled_local,
+                "updated_at": datetime.now(timezone.utc),
+            }
+        },
+        return_document=ReturnDocument.AFTER,
+    )
+    # Raises DuplicateKeyError (via the uniq_active_slot index) if another
+    # active appointment already holds the new slot.
+    return AppointmentDocument.from_doc(raw) if raw else None
+
+
+#  Inspections
 
 def query_inspections(
     *,
@@ -428,6 +575,7 @@ def count_inspections(
     if rechazo_rtm_probable is not None:
         query["rechazo_rtm_probable"] = rechazo_rtm_probable
         
+        
     return _inspections().count_documents(query)
 
 
@@ -442,3 +590,90 @@ def delete_user(username: str) -> bool:
     result = _users().delete_one({"_id": normalize_username(username)})
     
     return result.deleted_count > 0
+
+
+# Persist a grante discovered by the agent tool.
+def next_ticket_number(prefix: str = "TKT", width: int = 6) -> str:
+    """Mint the next ticket number, e.g. TKT-000042.
+
+    One atomic `$inc` on a single counter document: two grants racing cannot
+    read the same value, which a read-then-write would allow. Numbers can have
+    gaps (a mint whose grant then fails is not reused) -- a gap is harmless,
+    a duplicate ticket at the counter is not.
+    """
+    doc = _counters().find_one_and_update(
+        {"_id": "ticket"},
+        {"$inc": {"seq": 1}},
+        upsert=True,
+        return_document=ReturnDocument.AFTER,
+    )
+    return f"{prefix}-{int(doc['seq']):0{width}d}"
+
+
+def record_discount(doc: dict[str, Any]) -> None:
+    _discounts().insert_one(doc)
+ 
+ 
+def get_discount(discount_id: str) -> dict[str, Any] | None:
+    
+    return _discounts().find_one({"discount_id": discount_id.strip().upper()})
+ 
+ 
+def get_discount_for_inspection(inspection_id: str) -> dict[str, Any] | None:
+    """A discount already granted for this inspection, so a booking made AFTER
+    the grant still gets it applied."""
+    return _discounts().find_one({"inspection_id": inspection_id})
+
+
+def apply_discount_to_appointments(
+    inspection_id: str, code: str, percent: int, ticket_number: str | None = None
+) -> list[AppointmentDocument]:
+    """Write a granted discount onto every ACTIVE booking of this inspection.
+
+    The stored `estimated_repair_cost_cop` becomes what the customer owes; the
+    pre-discount figure moves into `discount.original_cost_cop`. Already
+    discounted bookings are skipped, so a re-grant cannot compound.
+    """
+    updated: list[AppointmentDocument] = []
+    cur = _appointments().find(
+        {
+            "inspection_id": inspection_id,
+            "status": {"$in": ["programada", "confirmada"]},
+            "discount": None,
+        }
+    )
+    for raw in list(cur):
+        
+        doc = AppointmentDocument.from_doc(raw)
+        original = doc.estimated_repair_cost_cop
+        
+        if not original or original <= 0:
+            continue
+        
+        doc.discount = Discount(
+            code=code, 
+            percent=percent, 
+            original_cost_cop=original,
+            ticket_number=ticket_number,
+        )
+        
+        doc.estimated_repair_cost_cop = round(original * (1 - percent / 100))
+        doc.updated_at = datetime.now(timezone.utc)
+        
+        _appointments().update_one(
+            {"_id": doc.id},
+            {"$set": {
+                "discount": doc.discount.model_dump(),
+                "estimated_repair_cost_cop": doc.estimated_repair_cost_cop,
+                "updated_at": doc.updated_at,
+            }},
+        )
+        updated.append(doc)
+        
+    return updated
+
+
+def get_discount_by_customer_key(customer_key: str) -> dict[str, Any] | None:
+    """Used by grant_discount to return the existing code when a customer who
+    already has a discount tries to get a second one."""
+    return _discounts().find_one({"customer_key": customer_key})

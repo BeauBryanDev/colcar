@@ -35,7 +35,7 @@ logger = logging.getLogger(__name__)
 
 router = APIRouter(tags=["admin"])
 
-# The reschedule route shares `parse_slot` and `repository.reschedule_appointment`
+# The reschedule route shares parse_slot and `repository.reschedule_appointment`
 # with the agent's `reschedule_appointment` tool: same workshop-hours rules and
 # active-only filter whether a booking moves from the calendar or from chat.
 # What differs is who may ask -- `StaffUser` here, a code+email+plate ownership

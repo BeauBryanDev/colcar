@@ -235,7 +235,7 @@ def update_password_hash(username: str, password_hash: str) -> None:
 #  users CRUD (admin dashboard)
 
 def ensure_user_indexes() -> None:
-    """Same indexes `scripts/seed_admin.py` creates, so a cluster that has
+    """Same indexes scripts/seed_admin.py creates, so a cluster that has
     only ever been written by the API is shaped identically to a seeded one."""
     users = _users()
     users.create_index([("username", ASCENDING)], unique=True, name="uniq_username")

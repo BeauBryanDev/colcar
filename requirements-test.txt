@@ -1,0 +1,20 @@
+# Slim install for CI. The suite never imports torch, transformers or
+# FlagEmbedding, so they are deliberately absent.
+fastapi>=0.135
+python-multipart>=0.0.9
+pydantic>=2.12
+pydantic-settings>=2.12
+anthropic>=0.121
+qdrant-client>=1.12
+onnxruntime>=1.18
+numpy>=1.26
+opencv-python-headless>=4.9
+pillow>=10.0
+httpx>=0.27
+pytest>=8.0
+
+# Admin auth: argon2id password hashing + HS256 JWTs.
+# argon2-cffi, not passlib: passlib is unmaintained and its bcrypt backend
+# breaks against bcrypt 5.x. PyJWT, not python-jose, for the same reason.
+argon2-cffi>=23.1
+PyJWT>=2.10

@@ -1,0 +1,224 @@
+/* ── Tailwind directives ──────────────────────────────────────────────────── */
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ── Base resets & global styles ──────────────────────────────────────────── */
+@layer base {
+  *,
+  *::before,
+  *::after {
+    box-sizing: border-box;
+  }
+
+  html {
+    font-family: 'Inter', system-ui, -apple-system, sans-serif;
+    font-size: 16px;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    scroll-behavior: smooth;
+  }
+
+  html,
+  body {
+    @apply bg-[#f5c800]/20 text-[#0a1628];
+    width: 100%;
+    height: 100%;
+    min-height: 100dvh;
+    overflow-x: hidden;
+  }
+
+  #root {
+    width: 100%;
+    min-height: 100dvh;
+    display: flex;
+    flex-direction: column;
+  }
+
+  /* Custom scrollbar */
+  ::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+  ::-webkit-scrollbar-track {
+    @apply bg-transparent;
+  }
+  ::-webkit-scrollbar-thumb {
+    @apply bg-brand-navy/30 rounded-full;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    @apply bg-brand-navy/60;
+  }
+
+  /* Focus ring */
+  :focus-visible {
+    @apply outline-none ring-2 ring-brand-yellow ring-offset-2;
+  }
+}
+
+/* ── Component helpers ─────────────────────────────────────────────────────── */
+@layer components {
+  /* Bebas Neue display font utility */
+  .font-display {
+    font-family: 'Bebas Neue', Impact, 'Arial Narrow', sans-serif;
+    letter-spacing: 0.05em;
+  }
+
+  /* Gradient diagonal decorative line (used in header) */
+  .diagonal-stripe {
+    background: repeating-linear-gradient(
+      -45deg,
+      transparent,
+      transparent 4px,
+      #cc1f1f 4px,
+      #cc1f1f 8px
+    );
+  }
+
+  /* Chat bubble tail — agent (left) */
+  .bubble-tail-left::before {
+    content: '';
+    position: absolute;
+    left: -6px;
+    top: 8px;
+    border-width: 6px 6px 6px 0;
+    border-style: solid;
+    border-color: transparent #f3f4f6 transparent transparent;
+  }
+
+  /* Chat bubble tail — user (right) */
+  .bubble-tail-right::before {
+    content: '';
+    position: absolute;
+    right: -6px;
+    top: 8px;
+    border-width: 6px 0 6px 6px;
+    border-style: solid;
+    border-color: transparent transparent transparent #1a3a6e;
+  }
+}
+
+/* ── Utility overrides ─────────────────────────────────────────────────────── */
+@layer utilities {
+  /* Truncate text with ellipsis (multi-line) */
+  .line-clamp-2 {
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+
+  /* Prevent layout shift during font load */
+  .font-size-adjust {
+    font-size-adjust: 0.5;
+  }
+}
+
+/* ── FullCalendar: the admin weekly calendar ───────────────────────────────── */
+/*
+ * The calendar renders with `height="auto"`, which sizes each hour row to its
+ * natural ~40px — ten workshop hours then collapse into ~400px of grid, too
+ * small to read a booking card in. `expandRows` does not help: it only fills a
+ * height that is already constrained.
+ *
+ * So the row height is set here instead of pinning the calendar to the
+ * viewport. The page grows to fit the grid, which keeps the whole week legible
+ * on a desktop without squashing it on a phone, where vertical scrolling is
+ * expected anyway.
+ */
+.fc {
+  --fc-border-color: rgba(10, 22, 40, 0.12);
+  --fc-today-bg-color: rgba(201, 154, 0, 0.08);
+  --fc-now-indicator-color: #cc1f1f;
+  font-size: 0.95rem;
+}
+
+/* The row height — this is the knob that makes the calendar big. */
+.fc .fc-timegrid-slot {
+  height: 4.25rem;
+}
+
+@media (min-width: 1280px) {
+  .fc .fc-timegrid-slot {
+    height: 5rem;
+  }
+}
+
+/* Hour labels and day headers, scaled to match. */
+.fc .fc-timegrid-axis-cushion,
+.fc .fc-timegrid-slot-label-cushion {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: rgba(10, 22, 40, 0.55);
+}
+
+.fc .fc-col-header-cell-cushion {
+  padding: 0.6rem 0.25rem;
+  font-weight: 700;
+  color: #0a1628;
+  text-transform: capitalize;
+}
+
+/* Booking cards: room to breathe now that the rows are taller. */
+.fc .fc-timegrid-event {
+  border-radius: 0.5rem;
+  border-width: 0;
+  box-shadow: 0 1px 3px rgba(10, 22, 40, 0.25);
+}
+
+.fc .fc-timegrid-event .fc-event-main {
+  padding: 0.25rem 0.35rem;
+}
+
+.fc .fc-event-draggable:hover {
+  filter: brightness(1.12);
+}
+
+/* A card that cannot move should not look like it can. */
+.fc .fc-event:not(.fc-event-draggable) {
+  cursor: default;
+  opacity: 0.85;
+}
+
+/* Toolbar in the project palette rather than FullCalendar's default blue. */
+.fc .fc-toolbar-title {
+  font-family: 'Bebas Neue', Impact, sans-serif;
+  font-size: 1.6rem;
+  letter-spacing: 0.03em;
+  color: #0a1628;
+  text-transform: capitalize;
+}
+
+.fc .fc-button-primary {
+  background-color: #1a3a6e;
+  border-color: #1a3a6e;
+  font-weight: 600;
+  text-transform: capitalize;
+}
+
+.fc .fc-button-primary:hover {
+  background-color: #0a1628;
+  border-color: #0a1628;
+}
+
+.fc .fc-button-primary:disabled {
+  background-color: rgba(26, 58, 110, 0.45);
+  border-color: transparent;
+}
+
+.fc .fc-button-primary:not(:disabled).fc-button-active,
+.fc .fc-button-primary:not(:disabled):active {
+  background-color: #c99a00;
+  border-color: #c99a00;
+  color: #0a1628;
+}
+
+.fc .fc-button-primary:focus,
+.fc .fc-button-primary:focus-visible {
+  box-shadow: 0 0 0 3px rgba(201, 154, 0, 0.4);
+}
+
+/* Outside business hours reads as unavailable, not as empty space. */
+.fc .fc-non-business {
+  background-color: rgba(10, 22, 40, 0.05);
+}

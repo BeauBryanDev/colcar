@@ -13,6 +13,11 @@ pillow>=10.0
 httpx>=0.27
 pytest>=8.0
 
+# Catalog/inspection/appointment store. Imported at module load by
+# app/db/mongo.py, so it is needed even though tests never open a socket
+# (MONGODB_URI is blanked in conftest.py and the JSON fallback is used).
+pymongo>=4.6
+
 # Admin auth: argon2id password hashing + HS256 JWTs.
 # argon2-cffi, not passlib: passlib is unmaintained and its bcrypt backend
 # breaks against bcrypt 5.x. PyJWT, not python-jose, for the same reason.

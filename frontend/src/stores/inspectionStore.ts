@@ -15,7 +15,7 @@ import type {
   Defect,
 } from '@/types'
 
-// ─── Interfaces ──────────────────────────────────────────────────────────────
+// Interfaces 
 
 interface UploadState {
   // Per-model upload files
@@ -59,8 +59,7 @@ interface AppState {
   // UI
   activeTab: 'inspector' | 'report'
 
-  // ─── Actions ───────────────────────────────────────────────────────────────
-
+  // Actions  
   // Session
   startSession: () => void
   /** Replace the placeholder id with the real one returned by POST /inspections/start. */
@@ -100,7 +99,7 @@ interface AppState {
   setActiveTab: (tab: 'inspector' | 'report') => void
 }
 
-// ─── Default processing steps matching the mockup ─────────────────────────
+//  Default processing steps matching the mockup  
 
 /**
  * Mirrors STEP_DEFINITIONS in app/core/session.py — ids must match exactly or

@@ -187,7 +187,7 @@ def create_app() -> FastAPI:
     register_exception_handlers(app)
 
     # Health sits at the root so probes do not depend on the API prefix.
-    app.include_router(health.router, prefix=settings.api_prefix)
+    app.include_router(health.router)
     app.include_router(inspection.router, prefix=settings.api_prefix)
     app.include_router(chat.router, prefix=settings.api_prefix)
     app.include_router(vehicles.router, prefix=settings.api_prefix)

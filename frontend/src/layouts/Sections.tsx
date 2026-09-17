@@ -55,7 +55,7 @@ export const Sections: React.FC = () => {
     <main className="flex-1 bg-brand-red/30 w-full flex flex-col">
       <div className="w-full px-6 lg:px-10 py-5 flex flex-col flex-1 gap-4">
 
-        {/* ── Upload section title ────────────────────────────────────── */}
+        {/* Upload section title  */}
         <div className="flex items-center gap-2">
           <span className="text-brand-red font-extrabold text-lg">★</span>
           <h2 className="font-extrabold text-brand-navy uppercase text-base tracking-wide">
@@ -63,10 +63,10 @@ export const Sections: React.FC = () => {
           </h2>
         </div>
 
-        {/* ── 3-column grid — fills all remaining vertical space ──────── */}
+        {/*  3-column grid — fills all remaining vertical space  */}
         <div className="grid grid-cols-1 lg:grid-cols-[1fr_1.5fr_1fr] gap-5 flex-1 items-stretch">
 
-          {/* ── LEFT: Upload panels ──────────────────────────────────── */}
+          {/* LEFT: Upload panels  */}
           <div className="flex flex-col gap-4 min-w-0">
             {/* Vehicle identity — the brand sets the price index server-side */}
             <div className="bg-brand-yellow rounded-xl border-2 border-brand-gold p-3">
@@ -96,7 +96,7 @@ export const Sections: React.FC = () => {
             </p>
           </div>
 
-          {/* ── CENTER: Car-Lens agent — bounded so the chat scrolls ──────
+          {/*CENTER: Car-Lens agent — bounded so the chat scrolls 
               The height cap is what gives the message list something to
               overflow inside. Without it the column grows with every message
               and the whole page gets taller instead. */}
@@ -109,7 +109,7 @@ export const Sections: React.FC = () => {
             />
           </div>
 
-          {/* ── RIGHT: Vehicle summary / charts ───────────────────────── */}
+          {/* ── RIGHT: Vehicle summary / charts  */}
           <div className="bg-brand-yellow rounded-2xl border-2 border-brand-gold flex flex-col gap-4 p-4 min-w-0">
 
             {/* Metrics row */}

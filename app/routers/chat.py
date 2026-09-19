@@ -8,10 +8,13 @@ from fastapi import APIRouter
 from starlette.concurrency import run_in_threadpool
 
 from app.agent.claude_agent import continue_conversation
+from app.agent.system_prompt import APPOINTMENT_SYSTEM_PROMPT
+from app.agent.tools_schema import APPOINTMENT_TOOLS
 from app.agent.memory import trim_history
 from app.core.exceptions import SessionStateError
 from app.core.session import session_store
 from app.schemas.agent import ChatRequest, ChatResponse
+from app.schemas.inspection import StartInspectionResponse
 
 logger = logging.getLogger(__name__)
 
@@ -21,19 +24,21 @@ router = APIRouter(prefix="/inspections", tags=["chat"])
 
 # POST /api/inspections/chat   {session_id, message} -> {reply, timestamp}
 
-# Serving this well for the SPA needs more care than the shape suggests,
-# because the SPA is a back-office tool and the session is not created until
-# the user clicks "Run". The SPA can't know the session id until the user
-# clicks "Run", so it has to send the message and the session id in the same
-# request. The SPA can't know the session id until the user clicks "Run", so
-# it has to send the message and the session id in the same request.
-# TODO :  Must to edit this module later on,  just becuase an existing customer would like
-# to talk to the agent in order to change the date of his appointment.
-# Right now user will have to re upload his car image again to talk to agent. no UI/UX-friendly.
-
 def _now_iso() -> str:
     
     return datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
+
+
+@router.post("/appointment-chat/start", response_model=StartInspectionResponse,
+             status_code=201)
+async def start_appointment_chat() -> StartInspectionResponse:
+    """Create a chat-only session for managing an existing booking."""
+    session = session_store.create(mode="appointment")
+
+    return StartInspectionResponse(
+        session_id=session.id,
+        message="Sesion de gestion de cita creada.",
+    )
 
 
 @router.post("/chat", response_model=ChatResponse)
@@ -52,11 +57,15 @@ async def chat(payload: ChatRequest) -> ChatResponse:
             payload.session_id
         )
 
+    appointment_only = session.mode == "appointment"
+
     run = await run_in_threadpool(
         lambda: continue_conversation(
             history, 
             payload.message,
-            context=session.agent_context()
+            context=session.agent_context(),
+            system=APPOINTMENT_SYSTEM_PROMPT if appointment_only else None,
+            tools=APPOINTMENT_TOOLS if appointment_only else None,
         )
     )
 
@@ -69,10 +78,7 @@ async def chat(payload: ChatRequest) -> ChatResponse:
                 f"iterations={run.iterations}"
             ),
         )
-
-    # Persist the whole exchange so the next turn continues from here. Storing
-    # run.messages (not just the reply) keeps tool_use/tool_result blocks
-    # paired -> the API rejects a history where they are split.
+        
     # Persist only what this turn added. `history` is a trimmed view, so the
     # new messages are counted from its length, not the session's.
     session_store.append_messages(

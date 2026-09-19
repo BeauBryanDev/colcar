@@ -13,6 +13,7 @@ from app.agent.make_appointment import make_appointment
 from app.agent.check_availability import check_availability
 from app.agent.discount import grant_discount, query_email_and_plate_number
 from app.agent.reschedule_and_cancel import reschedule_appointment, cancel_appointment
+from app.agent.read_appointment_info import read_appointment
 
 from app.rag.car_specs import get_car_specs as _get_car_specs
 from app.rag.check_repair_prices import check_repair_prices as _check_repair_prices
@@ -308,6 +309,7 @@ TOOL_IMPLEMENTATIONS = {
     "grant_discount": grant_discount,
     "reschedule_appointment": reschedule_appointment,
     "cancel_appointment": cancel_appointment,
+    "read_appointment": read_appointment,
 }
 
 

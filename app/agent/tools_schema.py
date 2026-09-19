@@ -372,6 +372,29 @@ CANCEL_APPOINTMENT: dict[str, Any] = {
     },
 }
 
+READ_APPOINTMENT: dict[str, Any] = {
+    "name": "read_appointment",
+    "description": (
+        "Consulta los datos guardados de una cita YA EXISTENTE: fecha y hora, "
+        "estado, vehiculo y costo estimado. Llamala SIEMPRE que el usuario "
+        "pregunte cuando es su cita, en que estado esta o cuanto quedo; nunca "
+        "respondas esos datos de memoria ni de la conversacion.\n\n"
+        "Necesitas el codigo de la cita, el correo y la placa -- los tres se "
+        "verifican contra la cita. Si no coinciden, la tool rechaza y debes "
+        "pedir al usuario que revise los datos, sin asumir cual esta mal.\n\n"
+        "Una cita cancelada o atendida tambien se puede consultar."
+    ),
+    "input_schema": {
+        "type": "object",
+        "properties": {
+            "codigo_cita": {"type": "string", "description": "Codigo de 6 caracteres de la cita."},
+            "email": {"type": "string", "description": "Correo del usuario, para verificar."},
+            "placa": {"type": "string", "description": "Placa del carro, formato ABC123, para verificar."},
+        },
+        "required": ["codigo_cita", "email", "placa"],
+    },
+}
+
 TOOLS: list[dict[str, Any]] = [
     QUERY_PRICING_BATCH,
     QUERY_COMPLIANCE,
@@ -382,7 +405,16 @@ TOOLS: list[dict[str, Any]] = [
     QUERY_EMAIL_AND_PLATE_NUMBER,
     GRANT_DISCOUNT,
     RESCHEDULE_APPOINTMENT,
-    CANCEL_APPOINTMENT
+    CANCEL_APPOINTMENT,
+    READ_APPOINTMENT,
 ]
 
 TOOL_NAMES: frozenset[str] = frozenset(t["name"] for t in TOOLS)
+
+# Appointment-only chat: nothing here needs an inspection in the thread.
+APPOINTMENT_TOOLS: list[dict[str, Any]] = [
+    READ_APPOINTMENT,
+    CHECK_AVAILABILITY,
+    RESCHEDULE_APPOINTMENT,
+    CANCEL_APPOINTMENT,
+]

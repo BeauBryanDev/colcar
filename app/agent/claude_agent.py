@@ -79,11 +79,7 @@ _CACHE_CONTROL = {"type": "ephemeral"}
 # tool schemas ~2.7k), and the loop re-sends it once per iteration. Caching it
 # makes every turn after the first read it at 0.1x.
 #
-# Haiku 4.5 has a 4096-token MINIMUM cacheable prefix -> the highest of any
-# current model. The system prompt alone (~2.7k) is below it and would silently
-# never cache. Render order is tools -> system -> messages, so the marker goes
-# on the system block and covers tools + system together, clearing the floor.
-# Later breakpoints inherit that prefix, so the short seed caches fine too.
+# Haiku 4.5 has a 4096-token MINIMUM cacheable prefix .
 
 def _marked(message: dict[str, Any]) -> dict[str, Any]:
     
@@ -149,7 +145,8 @@ def _stable_head_index(messages: list[dict[str, Any]]) -> int:
 
 def _request_kwargs(
     history: list[dict[str, Any]],
-    system: str | None = None
+    system: str | None = None,
+    tools: list[dict[str, Any]] | None = None,
 ) -> dict[str, Any]:
     """Build one Messages request, with up to three cache breakpoints.
 
@@ -178,7 +175,7 @@ def _request_kwargs(
             "text": system or CAR_LENS_SYSTEM_PROMPT,
             "cache_control": _CACHE_CONTROL,
         }],
-        "tools": TOOLS,
+        "tools": tools if tools is not None else TOOLS,
         "messages": messages,
     }
 
@@ -187,6 +184,7 @@ def run_agent(
     messages: list[dict[str, Any]],
     *,
     system: str | None = None,
+    tools: list[dict[str, Any]] | None = None,
     max_iterations: int | None = None,
     context: dict[str, Any] | None = None,
 ) -> AgentRun:
@@ -204,12 +202,15 @@ def run_agent(
 
     history: list[dict[str, Any]] = list(messages)
     run = AgentRun(reply="", messages=history)
+    # A reduced toolset is enforced here too, not only by what the model sees:
+    # execute_tool knows every tool, so a named-but-unoffered one must not run.
+    allowed = {t["name"] for t in tools} if tools is not None else None
 
     for iteration in range(1, limit + 1):
         run.iterations = iteration
         
         try:
-            response = client.messages.create(**_request_kwargs(history, system))
+            response = client.messages.create(**_request_kwargs(history, system, tools))
             
         except anthropic.APIStatusError as exc:
             raise AgentError(
@@ -258,12 +259,20 @@ def run_agent(
 
             logger.info("Tool call: %s", block.name)
             try:
-                result = execute_tool(
-                    block.name, 
-                    dict(block.input), 
-                    context
-                )
-                is_error = False
+                if allowed is not None and block.name not in allowed:
+                    logger.warning("Tool %s not in this session's toolset", block.name)
+                    result = {
+                        "error": "Esa herramienta no esta disponible en esta conversacion.",
+                        "recuperable": False,
+                    }
+                    is_error = True
+                else:
+                    result = execute_tool(
+                        block.name,
+                        dict(block.input),
+                        context
+                    )
+                    is_error = False
                 
             except AppError as exc:
                 # Degrade rather than abort: a failed compliance lookup should
@@ -289,7 +298,10 @@ def run_agent(
 
         # All results for a turn go back in ONE user message. Splitting them
         # trains the model out of making parallel tool calls.
-        history.append({"role": "user", "content": tool_results})
+        history.append({
+            "role": "user", 
+            "content": tool_results
+            })
 
     raise AgentLoopLimitError(
         log_message=(
@@ -297,8 +309,8 @@ def run_agent(
         )
     )
 
-# TODO :   IT NEEDS TO REFACTOR,  AN EXISTING USER MAY WANT TO CHANGE HIS APPOINTMENT
-# TODO :  USER  WHICH EXISTING TIKCET DOES NTO WANT TO UPLOAD HIS CAR IMAGE AGAIN AND AGAIN
+# Appointment-only chats have no seed: /chat drives them through
+# continue_conversation with APPOINTMENT_SYSTEM_PROMPT and APPOINTMENT_TOOLS.
 
 def start_inspection_conversation(
     agent_payload: dict[str, Any], 
@@ -326,8 +338,10 @@ def continue_conversation(
     user_message: str,
     *,
     context: dict[str, Any] | None = None,
+    system: str | None = None,
+    tools: list[dict[str, Any]] | None = None,
 ) -> AgentRun:
-    """Answer a follow-up question in an existing inspection thread."""
+    """Answer a follow-up question in an existing thread."""
     
     return run_agent(
         [*messages, 
@@ -335,7 +349,9 @@ def continue_conversation(
           "content": user_message
           }
          ], 
-        context=context
+        context=context,
+        system=system,
+        tools=tools,
     )
 
 

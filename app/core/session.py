@@ -27,6 +27,7 @@ InspectionStatus = Literal[
     "idle", "uploading", "processing", "analyzing", "complete", "error"
 ]
 StepStatus = Literal["pending", "running", "done", "error"]
+SessionMode = Literal["inspection", "appointment"]
 
 # The pipeline the SPA renders. Labels are user-facing, hence Spanish.
 # `tires` is created only when tyre photos were uploaded -- showing a step that
@@ -117,6 +118,10 @@ class InspectionSession:
 
     vehicle_info: dict[str, Any] = field(default_factory=dict)
 
+    # "appointment": a returning customer who only wants to read, move or
+    # cancel a booking. No vision, no seed, and a reduced toolset.
+    mode: SessionMode = "inspection"
+
     # derived  
     @property
     def tires_inspection_requested(self) -> bool:
@@ -199,10 +204,11 @@ class SessionStore:
 
     #  lifecycle  
     def create(self, 
-               vehicle_info: dict[str, Any] | None = None
+               vehicle_info: dict[str, Any] | None = None,
+               mode: SessionMode = "inspection",
                ) -> InspectionSession:
         
-        session = InspectionSession(id=str(uuid.uuid4()))
+        session = InspectionSession(id=str(uuid.uuid4()), mode=mode)
         session.vehicle_info = vehicle_info or {}
         session.steps = [ProcessingStep(id=i, label=l) for i, l in STEP_DEFINITIONS]
         

@@ -29,7 +29,8 @@ def _now_iso() -> str:
     return datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
 
 
-@router.post("/appointment-chat/start", response_model=StartInspectionResponse,
+@router.post("/appointment-chat/start", 
+             response_model=StartInspectionResponse,
              status_code=201)
 async def start_appointment_chat() -> StartInspectionResponse:
     """Create a chat-only session for managing an existing booking."""
@@ -92,7 +93,9 @@ async def chat(payload: ChatRequest) -> ChatResponse:
         run.input_tokens, run.output_tokens,
         run.cache_read_tokens, run.cache_write_tokens,
     )
-    
+    #   E277E1  ,  GTH564 , 
+
+ 
     return ChatResponse(
         reply=run.reply,
         timestamp=_now_iso(),

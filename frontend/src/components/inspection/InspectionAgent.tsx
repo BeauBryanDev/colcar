@@ -7,7 +7,14 @@ import { ProcessingStatus } from './ProcessingStatus'
 import { InspectionActions } from './InspectionActions'
 import { useInspectionStore } from '@/stores/inspectionStore'
 import { useInspection } from '@/hooks/useInspection'
+import { useBackendStatus, type BackendStatus } from '@/hooks/useBackendStatus'
 import chatIconUrl from '@/assets/chat_icon.svg'
+
+const STATUS_BADGE: Record<BackendStatus, { variant: 'green' | 'red' | 'gray'; label: string }> = {
+  checking: { variant: 'gray',  label: 'CONECTANDO' },
+  online:   { variant: 'green', label: 'ONLINE' },
+  offline:  { variant: 'red',   label: 'OFFLINE' },
+}
 
 interface InspectionAgentProps {
   onEstimateCosts: () => void
@@ -30,6 +37,9 @@ export const InspectionAgent: React.FC<InspectionAgentProps> = ({
 
   // POST /api/inspections/chat — continues the same agent thread.
   const { sendMessage, isBusy } = useInspection()
+
+  // Polls GET /health so the badge reflects the real backend, not a constant.
+  const backendStatus = useBackendStatus()
 
   const scrollRef = useRef<HTMLDivElement>(null)
 
@@ -82,7 +92,9 @@ export const InspectionAgent: React.FC<InspectionAgentProps> = ({
               COLCAR 
             </h2>
             <FiStar className="w-5 h-5 text-brand-yellow fill-brand-yellow" aria-hidden="true" />
-            <Badge variant="green" dot>EN LÍNEA</Badge>
+            <Badge variant={STATUS_BADGE[backendStatus].variant} dot>
+              {STATUS_BADGE[backendStatus].label}
+            </Badge>
           </div>
           <p className="text-brand-yellow/80 text-sm font-semibold uppercase tracking-wider mt-0.5">
             Agente de Inspección con IA

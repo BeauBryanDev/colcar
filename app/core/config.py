@@ -162,6 +162,21 @@ class Settings(BaseSettings):
     # few questions. Sessions are swept on the next create() or purge call.
     session_ttl_minutes: int = 120
 
+    #  Rate limits (app/core/rate_limit.py)
+    # /run and /chat are public and each one spends Claude tokens. Per-IP
+    # limits stop one visitor; the global cap stops many. The Anthropic
+    # workspace's monthly spend limit is the backstop behind all of these.
+    rate_limit_enabled: bool = True
+    rate_session_start_per_10min: int = 10
+    rate_run_per_10min: int = 3
+    rate_run_per_day: int = 10
+    rate_chat_per_minute: int = 10
+    rate_chat_per_day: int = 60
+    rate_agent_global_per_day: int = 300
+    chat_max_turns_per_session: int = 30
+    # Failed code+email+plate checks before a session's booking tools lock.
+    verify_max_failures: int = 5
+
     upload_dir: Path = BASE_DIR / "data" / "uploads"
     max_upload_mb: int = 15
     allowed_image_types: list[str] = ["image/jpeg", "image/png", "image/webp"]

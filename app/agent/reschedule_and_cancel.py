@@ -9,6 +9,7 @@ from pymongo.errors import DuplicateKeyError, PyMongoError
  
 from app.agent.make_appointment import parse_slot
 from app.core.exceptions import AppointmentUnavailableError
+from app.core.rate_limit import record_verify_failure, verify_locked
 from app.db import mongo, repository
  
 logger = logging.getLogger(__name__)
@@ -39,10 +40,25 @@ def _reject(motivo: str,
 # Verify helper
 
 
-def _verify(tool_input: dict[str, Any]) -> Any:
-    """Shared owner check for both tools. 
+def _verify(
+    tool_input: dict[str, Any],
+    context: dict[str, Any] | None = None,
+) -> Any:
+    """Shared owner check for both tools.
     Returns the appointment or a
     rejection dict."""
+    # Codes are 6 hex chars, so without a cap a bot could guess them one chat
+    # turn at a time. The message stays as unspecific as the mismatch one.
+    session_id = (context or {}).get("session_id")
+    if verify_locked(session_id):
+        return _reject(
+            "Se alcanzo el maximo de intentos de verificacion en esta "
+            "conversacion. Pide al usuario que se comunique directamente con "
+            "el taller; no vuelvas a intentar la verificacion.",
+            campo="verificacion",
+            recuperable=False,
+        )
+
     codigo = str(tool_input.get("codigo_cita") or "").strip()
     email = str(tool_input.get("email") or "").strip()
     plate = re.sub(r"[\s-]", "", str(tool_input.get("placa") or "")).upper()
@@ -70,6 +86,7 @@ def _verify(tool_input: dict[str, Any]) -> Any:
         ) from exc
  
     if appt is None:
+        record_verify_failure(session_id)
         return _reject(
             "El codigo de cita, el correo y la placa no coinciden con ninguna "
             "cita registrada. Pide al usuario que revise los tres datos; no "
@@ -87,7 +104,7 @@ def reschedule_appointment(
     context: dict[str, Any] | None = None
 ) -> dict[str, Any]:
     
-    appt = _verify(tool_input)
+    appt = _verify(tool_input, context)
     
     if isinstance(appt, dict):
         return appt
@@ -150,7 +167,7 @@ def cancel_appointment(
     context: dict[str, Any] | None = None
 ) -> dict[str, Any]:
     
-    appt = _verify(tool_input)
+    appt = _verify(tool_input, context)
     
     if isinstance(appt, dict):
         return appt

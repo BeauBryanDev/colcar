@@ -193,6 +193,21 @@ class AuthUnavailableError(AppError):
     detail = "El servicio de autenticacion no esta disponible."
 
 
+class RateLimitError(AppError):
+    """Too many requests from one IP, or the day's shared agent budget is spent.
+
+    Carries `retry_after` so the handler can send a Retry-After header.
+    """
+
+    status_code = status.HTTP_429_TOO_MANY_REQUESTS
+    code = "demasiadas_solicitudes"
+    detail = "Demasiadas solicitudes. Espera un momento e intenta de nuevo."
+
+    def __init__(self, *args, retry_after: int = 60, **kwargs) -> None:
+        super().__init__(*args, **kwargs)
+        self.retry_after = retry_after
+
+
 class AgentError(AppError):
     status_code = status.HTTP_502_BAD_GATEWAY
     code = "agente_no_disponible"
@@ -225,8 +240,12 @@ async def app_error_handler(request: Request,
         exc.log_message,
     )
     
-    return JSONResponse(status_code=exc.status_code, 
-                        content=exc.to_payload())
+    retry_after = getattr(exc, "retry_after", None)
+    headers = {"Retry-After": str(retry_after)} if retry_after else None
+
+    return JSONResponse(status_code=exc.status_code,
+                        content=exc.to_payload(),
+                        headers=headers)
 
 
 async def validation_error_handler(

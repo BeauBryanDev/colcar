@@ -122,6 +122,9 @@ class InspectionSession:
     # cancel a booking. No vision, no seed, and a reduced toolset.
     mode: SessionMode = "inspection"
 
+    # /chat calls made on this session, capped by chat_max_turns_per_session.
+    chat_turns: int = 0
+
     # derived  
     @property
     def tires_inspection_requested(self) -> bool:
@@ -169,6 +172,9 @@ class InspectionSession:
         
         return {
             **self.vehicle_info,
+            # Keys the booking-lookup lockout; appointment sessions have no
+            # inspection, so this is not the same fact as inspection_id.
+            "session_id": self.id,
             "inspection_id": self.id,
             "inspection_status": self.status,
             "total_cop": resumen.get("total_cop"),
@@ -401,6 +407,15 @@ class SessionStore:
             self._touch(session)
             
             return session
+
+    def count_chat_turn(self, session_id: str) -> int:
+        """Count one /chat call and return the session's new total."""
+        with self._lock:
+            session = self.get(session_id)
+            session.chat_turns += 1
+            self._touch(session)
+
+            return session.chat_turns
 
     def _touch(self, session: InspectionSession) -> None:
         session.updated_at = _now()

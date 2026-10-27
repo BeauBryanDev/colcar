@@ -25,7 +25,7 @@ def read_appointment(
     context: dict[str, Any] | None = None
 ) -> dict[str, Any]:
 
-    appt = _verify(tool_input)
+    appt = _verify(tool_input, context)
 
     if isinstance(appt, dict):
         return appt

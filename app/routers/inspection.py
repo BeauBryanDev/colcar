@@ -6,12 +6,13 @@ import shutil
 from datetime import datetime, timezone
 from typing import Annotated
 
-from fastapi import APIRouter, BackgroundTasks, File, Form, UploadFile, status
+from fastapi import APIRouter, BackgroundTasks, Depends, File, Form, UploadFile, status
 from fastapi.responses import FileResponse
 
 from app.agent.claude_agent import start_inspection_conversation
 from app.core.config import get_settings
 from app.core.exceptions import AppError, InvalidUploadError, SessionStateError
+from app.core.rate_limit import limit_run, limit_session_start
 from app.core.session import DETECTION_MODELS, DetectionModel, session_store
 from app.schemas.detections import OverlayImage, OverlayResponse, OverlayShape
 from app.schemas.inspection import (
@@ -48,7 +49,8 @@ _SURFACE_MODELS = ("vehicle_parts", "surface_defects")
 # then deleted with the session when it expires.
 
 @router.post("/start", response_model=StartInspectionResponse,
-             status_code=status.HTTP_201_CREATED)
+             status_code=status.HTTP_201_CREATED,
+             dependencies=[Depends(limit_session_start)])
 async def start_inspection(
     payload: StartInspectionRequest | None = None,
 ) -> StartInspectionResponse:
@@ -259,7 +261,8 @@ def _fail(session_id: str, detail: str) -> None:
         pass  # session already gone; nothing to record
 
 
-@router.post("/run", response_model=RunInspectionResponse)
+@router.post("/run", response_model=RunInspectionResponse,
+             dependencies=[Depends(limit_run)])
 async def run_inspection_endpoint(
     payload: RunInspectionRequest, 
     background: BackgroundTasks,

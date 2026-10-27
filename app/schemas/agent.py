@@ -13,7 +13,9 @@ MessageRole = Literal["agent", "user", "system"]
 
 class ChatRequest(ApiRequest):
     session_id: str
-    message: str = Field(min_length=1, max_length=4000)
+    # Every character is re-sent to Claude for the rest of the thread; a real
+    # customer question fits well under this.
+    message: str = Field(min_length=1, max_length=1000)
 
 
 class ChatResponse(ApiResponse):

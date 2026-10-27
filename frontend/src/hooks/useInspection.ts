@@ -135,10 +135,19 @@ export function useInspection() {
       setStatus('error')
       if (pollingRef.current) clearInterval(pollingRef.current)
       console.error('Inspection error:', err)
+      // A 429 from the rate limiter carries a Spanish detail worth showing;
+      // without this the run just stops with no explanation.
+      const detail = err instanceof Error && err.message ? err.message : null
+      addMessage({
+        id: `err_${Date.now()}`,
+        role: 'agent',
+        content: detail ?? 'No se pudo iniciar el análisis. Intenta de nuevo.',
+        timestamp: new Date().toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit' }),
+      })
     }
   }, [
     canSubmit, upload.files, vehicle, storeStart, setStatus, setProcessingSteps,
-    setLoadingReport, setReport, setVision, setOverlay, setSessionId,
+    setLoadingReport, setReport, setVision, setOverlay, setSessionId, addMessage,
   ])
 
   /** Send a chat message to Car-Lens */

@@ -149,7 +149,7 @@ export const InspectionAgent: React.FC<InspectionAgentProps> = ({
             onChange={(e) => setInputValue(e.target.value)}
             onKeyDown={handleKeyDown}
             disabled={actionsDisabled}
-            maxLength={4000}
+            maxLength={1000} // mirrors ChatRequest.message max_length in app/schemas/agent.py
             placeholder={
               appointmentMode
                 ? 'Escribe el código de tu cita, tu correo y la placa...'

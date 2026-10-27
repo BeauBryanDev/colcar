@@ -45,6 +45,16 @@ def no_network(monkeypatch):
     monkeypatch.setattr(socket, "create_connection", blocked)
 
 
+@pytest.fixture(autouse=True)
+def fresh_rate_limits():
+    """The limiter is a process singleton; one test's hits must not 429 the next."""
+    from app.core.rate_limit import limiter
+
+    limiter.reset()
+    yield
+    limiter.reset()
+
+
 @pytest.fixture(scope="session")
 def settings():
     return get_settings()

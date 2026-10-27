@@ -11,8 +11,6 @@ from app.agent import reschedule_and_cancel as rc
 from app.agent.tools_iml import execute_tool
 from app.models.appointment import AppointmentDocument
 
-pytestmark = pytest.mark.skip(reason="read_appointment tool not released yet")
-
 INPUT = {"codigo_cita": "ABC123", "email": "ana@correo.co", "placa": "xyz-123"}
 
 
